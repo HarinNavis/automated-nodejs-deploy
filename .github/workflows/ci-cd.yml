@@ -52,8 +52,8 @@ jobs:
           docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/nodejs-app:latest
 
       # 7. Deploy to EC2
-        - name: Deploy to EC2
-          uses: appleboy/ssh-action@v0.1.7
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.7
           with:
             host: ${{ secrets.EC2_HOST }}
             username: ${{ secrets.EC2_USER }}
