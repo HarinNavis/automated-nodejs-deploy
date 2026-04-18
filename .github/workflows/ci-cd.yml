@@ -63,33 +63,33 @@ jobs:
                AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
                REGION=us-east-1
 
-            IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/nodejs-app:latest
-            PREV_IMAGE=nodejs-app:previous
+               IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/nodejs-app:latest
+               PREV_IMAGE=nodejs-app:previous
 
-            echo "Logging into ECR..."
-            aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+               echo "Logging into ECR..."
+               aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 
-            echo "Pulling latest image..."
-            docker pull $IMAGE
+               echo "Pulling latest image..."
+               docker pull $IMAGE
 
-            echo "Saving backup image..."
-            docker tag $IMAGE $PREV_IMAGE || true
+               echo "Saving backup image..."
+               docker tag $IMAGE $PREV_IMAGE || true
 
-            echo "Stopping old container..."
-            docker stop nodejs-app || true
-            docker rm nodejs-app || true
-
-            echo "Starting new container..."
-            docker run -d --name nodejs-app -p 80:3000 $IMAGE
-
-            echo "Waiting..."
-            sleep 10
-
-            echo "Health check..."
-            if curl -f http://localhost:80; then
-               echo "SUCCESS"
-            else
-               echo "FAILED → Rolling back"
+               echo "Stopping old container..."
                docker stop nodejs-app || true
                docker rm nodejs-app || true
-               docker run -d --name nodejs-app -p 80
+
+               echo "Starting new container..."
+               docker run -d --name nodejs-app -p 80:3000 $IMAGE
+
+               echo "Waiting..."
+               sleep 10
+
+               echo "Health check..."
+               if curl -f http://localhost:80; then
+                  echo "SUCCESS"
+               else
+                  echo "FAILED → Rolling back"
+                  docker stop nodejs-app || true
+                  docker rm nodejs-app || true
+                  docker run -d --name nodejs-app -p 80
