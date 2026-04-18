@@ -60,34 +60,43 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            IMAGE=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/nodejs-app:latest
-            PREV_IMAGE=nodejs-app:previous
+           - name: Deploy to EC2
+  uses: appleboy/ssh-action@v0.1.7
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ${{ secrets.EC2_USER }}
+    key: ${{ secrets.EC2_SSH_KEY }}
+    envs: ACCOUNT_ID,REGION
+    script: |
+      ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+      REGION=us-east-1
 
-            echo "Pulling latest image..."
-            docker pull $IMAGE
+      IMAGE=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/nodejs-app:latest
+      PREV_IMAGE=nodejs-app:previous
 
-            echo "Saving current running image..."
-            docker tag $IMAGE $PREV_IMAGE || true
+      echo "Pulling latest image..."
+      docker pull $IMAGE
 
-            echo "Stopping old container..."
-            docker stop nodejs-app || true
-            docker rm nodejs-app || true
+      echo "Saving backup image..."
+      docker tag $IMAGE $PREV_IMAGE || true
 
-            echo "Starting new container..."
-            docker run -d --name nodejs-app -p 80:3000 $IMAGE
+      echo "Stopping old container..."
+      docker stop nodejs-app || true
+      docker rm nodejs-app || true
 
-            echo "Waiting for app startup..."
-            sleep 10
+      echo "Starting new container..."
+      docker run -d --name nodejs-app -p 80:3000 $IMAGE
 
-            echo "Running health check..."
-            if curl -f http://localhost:80; then
-                echo "Deployment SUCCESS"
-            else
-                echo "Deployment FAILED → Rolling back..."
+      echo "Waiting..."
+      sleep 10
 
-                docker stop nodejs-app || true
-                docker rm nodejs-app || true
-
-                docker run -d --name nodejs-app -p 80:3000 $PREV_IMAGE
-                exit 1
-            fi
+      echo "Health check..."
+      if curl -f http://localhost:80; then
+        echo "SUCCESS"
+      else
+        echo "FAILED → Rolling back"
+        docker stop nodejs-app || true
+        docker rm nodejs-app || true
+        docker run -d --name nodejs-app -p 80:3000 $PREV_IMAGE
+        exit 1
+      fi
