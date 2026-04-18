@@ -60,5 +60,34 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            echo "✅ Connected successfully"
-            docker --version
+            IMAGE=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/nodejs-app:latest
+            PREV_IMAGE=nodejs-app:previous
+
+            echo "Pulling latest image..."
+            docker pull $IMAGE
+
+            echo "Saving current running image..."
+            docker tag $IMAGE $PREV_IMAGE || true
+
+            echo "Stopping old container..."
+            docker stop nodejs-app || true
+            docker rm nodejs-app || true
+
+            echo "Starting new container..."
+            docker run -d --name nodejs-app -p 80:3000 $IMAGE
+
+            echo "Waiting for app startup..."
+            sleep 10
+
+            echo "Running health check..."
+            if curl -f http://localhost:80; then
+                echo "Deployment SUCCESS"
+            else
+                echo "Deployment FAILED → Rolling back..."
+
+                docker stop nodejs-app || true
+                docker rm nodejs-app || true
+
+                docker run -d --name nodejs-app -p 80:3000 $PREV_IMAGE
+                exit 1
+            fi
